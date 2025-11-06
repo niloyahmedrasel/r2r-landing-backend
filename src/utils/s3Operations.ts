@@ -21,7 +21,7 @@ export const uploadFileToS3 = async (
 
   await s3Client.send(command);
 
-  return `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${command.input.Key}`;
+  return `https://${bucketName}.s3.${process.env.REGION}.amazonaws.com/${command.input.Key}`;
 };
 
 
