@@ -72,6 +72,8 @@ export class EventController{
                 return res.status(404).json({ error: "Event not found" });
             }
 
+            console.log(existingEvent);
+
             const existingImageUrls: string[] = existingEvent.images || [];
 
             for (const url of existingImageUrls) {
