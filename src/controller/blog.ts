@@ -63,32 +63,41 @@ export class BlogController {
     async update(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const { title, content, author,date,time } = req.body;
-            const files = req.files as Express.Multer.File[]; 
+            const { title, content, author, date, time } = req.body;
+            const files = req.files as Express.Multer.File[];
 
             const existingBlog = await blogRepository.findById(id);
             if (!existingBlog) {
                 return res.status(404).json({ error: "Blog not found" });
             }
 
-            const existingImageUrls: string[] = existingBlog.images || [];
+            let imageUrls: string[] = existingBlog.images || [];
 
             if (files && files.length > 0) {
-                    for (const url of existingImageUrls) {
+                for (const url of imageUrls) {
                     await deleteFileFromS3(url);
                 }
+
+                imageUrls = await Promise.all(
+                    files.map((file) =>
+                        uploadFileToS3(file.buffer, file.originalname, file.mimetype)
+                    )
+                );
             }
 
-            const imageUrls = files? await Promise.all(
-                files.map((file) =>
-                uploadFileToS3(file.buffer, file.originalname, file.mimetype)
-                )
-            ):[];
+            const blog = await blogRepository.update(id, {
+                title,
+                content,
+                author,
+                date,
+                time,
+                images: imageUrls   
+            } as IBlog);
 
-            const blog = await blogRepository.update(id, { title, content, author,date,time, images: imageUrls } as IBlog);
             if (!blog) {
                 return res.status(404).json({ error: "Blog not found" });
             }
+
             res.status(200).json(blog);
         } catch (error) {
             res.status(500).json({ error: "Failed to update blog" });

@@ -91,32 +91,42 @@ export class EventController{
     async update(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const { title, description, location,organizer,date } = req.body;
-            const files = req.files as Express.Multer.File[]; 
+            const { title, description, location, organizer, date } = req.body;
+            const files = req.files as Express.Multer.File[];
 
             const existingEvent = await eventRepository.findById(id);
             if (!existingEvent) {
                 return res.status(404).json({ error: "Event not found" });
             }
 
-            const existingImageUrls: string[] = existingEvent.images || [];
+
+            let imageUrls: string[] = existingEvent.images || [];
 
             if (files && files.length > 0) {
-                    for (const url of existingImageUrls) {
+                for (const url of imageUrls) {
                     await deleteFileFromS3(url);
                 }
+
+                imageUrls = await Promise.all(
+                    files.map((file) =>
+                        uploadFileToS3(file.buffer, file.originalname, file.mimetype)
+                    )
+                );
             }
 
-            const imageUrls = files? await Promise.all(
-                files.map((file) =>
-                uploadFileToS3(file.buffer, file.originalname, file.mimetype)
-                )
-            ):[];
+            const event = await eventRepository.update(id, {
+                title,
+                description,
+                location,
+                date,
+                organizer,
+                images: imageUrls 
+            } as IEvent);
 
-            const event = await eventRepository.update(id, { title,description,location,date,organizer,images:imageUrls } as IEvent);
             if (!event) {
                 return res.status(404).json({ error: "Event not found" });
             }
+
             res.status(200).json(event);
         } catch (error) {
             console.error(error);

@@ -71,29 +71,45 @@ export class TeamController {
   }
 
   async update(req: Request, res: Response) {
-    try {
-        const { id } = req.params;
-        const { name, designation, description } = req.body;
-        const file = req.file as Express.Multer.File;
-        
-        const existingTeamMember = await teamRepository.findById(id);
-        if (!existingTeamMember) {
-            return res.status(404).json({ error: "Member not found" });
-        }
+      try {
+          const { id } = req.params;
+          const { name, designation, description } = req.body;
+          const file = req.file as Express.Multer.File;
 
-        const existingImageUrls: string = existingTeamMember.image;
+          const existingTeamMember = await teamRepository.findById(id);
+          if (!existingTeamMember) {
+              return res.status(404).json({ error: "Member not found" });
+          }
 
-        if (file) {
-            await deleteFileFromS3(existingImageUrls);
-        }      
-      const team = await teamRepository.update(id, { name, designation, description });
-      if (!team) {
-        return res.status(404).json({ error: "Team not found" });
+          let imageUrl: string = existingTeamMember.image;
+
+          if (file) {
+              if (imageUrl) {
+                  await deleteFileFromS3(imageUrl);
+              }
+
+              imageUrl = await uploadFileToS3(
+                  file.buffer,
+                  file.originalname,
+                  file.mimetype
+              );
+          }
+
+          const team = await teamRepository.update(id, {
+              name,
+              designation,
+              description,
+              image: imageUrl
+          });
+
+          if (!team) {
+              return res.status(404).json({ error: "Team not found" });
+          }
+
+          res.status(200).json(team);
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ error: "Failed to update team" });
       }
-      res.status(200).json(team);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Failed to update team" });
-    }
   }
 }
