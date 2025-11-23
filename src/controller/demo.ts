@@ -10,8 +10,8 @@ export class DemoController {
             const { name, email, company } = req.body;
             const demo = await demoRepository.create( name, email, company );
             res.status(201).json(demo);
-        } catch (error) {
-            res.status(500).json({ error: "Failed to create demo" });
+        } catch (error:any) {
+            res.status(500).json({ error: "Failed to create demo", message: error.message });
         }
     }
 
